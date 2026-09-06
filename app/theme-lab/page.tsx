@@ -5,6 +5,15 @@ import { Anton, Archivo_Black, Bebas_Neue } from "next/font/google";
    it renders a static replica of the hero and two rows so the real components
    and the database stay out of it. */
 
+import type { Metadata } from "next";
+
+/* A robots.txt Disallow only stops crawling — Google can still index a blocked
+   URL it finds linked from elsewhere. Keeping this page out of results needs
+   the header too. */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
+
 const archivo = Archivo_Black({ weight: "400", subsets: ["latin"], variable: "--font-display-archivo" });
 const bebas = Bebas_Neue({ weight: "400", subsets: ["latin"], variable: "--font-display-bebas" });
 const anton = Anton({ weight: "400", subsets: ["latin"], variable: "--font-display-anton" });

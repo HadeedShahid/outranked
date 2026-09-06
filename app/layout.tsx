@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/domain/site";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -13,8 +14,60 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "outrank — claim the top spot",
-  description: "A public leaderboard where rank is what you pay. Nothing else.",
+  metadataBase: new URL(SITE_URL),
+
+  // `default` is what the home page and any untitled route get; `template`
+  // wraps every child route's own title. Child pages therefore set only their
+  // own name, and the suffix can be changed in one place.
+  title: {
+    default: "outrank — a free leaderboard you can climb",
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+
+  // Google has ignored this tag since 2009 and Bing treats it as a spam
+  // signal at best. Kept short and honest because a few smaller engines and
+  // internal search tools still read it; the real keyword work lives in the
+  // titles, headings and body copy.
+  keywords: [
+    "free product directory",
+    "startup leaderboard",
+    "submit your website free",
+    "free backlink directory",
+    "indie product listing",
+    "business directory",
+  ],
+
+  alternates: { canonical: "/" },
+
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: "outrank — a free leaderboard you can climb",
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "outrank — a free leaderboard you can climb",
+    description: SITE_DESCRIPTION,
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      // Without these Google may show only a thumbnail and a clipped snippet.
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

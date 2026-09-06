@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cn } from "cn";
@@ -6,10 +7,64 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getListing } from "@/lib/data/listings";
+import { SITE_NAME, SITE_URL } from "@/lib/domain/site";
 import { displayHost } from "@/lib/domain/url";
+import { billingName } from "@/lib/utils/billing-name";
+import { JsonLd } from "@/lib/seo/json-ld";
 import { RelativeTime } from "@/components/listing/relative-time";
 import { ListingAvatar } from "@/components/listing/listing-avatar";
 import { ListingLink } from "@/components/listing/listing-link";
+
+/**
+ * Per-listing metadata.
+ *
+ * The listing's own title is deliberately NOT reused verbatim. It was scraped
+ * from the target site, so echoing it would put a near-identical <title> in the
+ * index competing with the original — the classic signature of a scraper, and
+ * a fast route to being filtered as duplicate content. What is unique about
+ * this page is the listing's standing on this board, so that is what the title
+ * and description say.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const listing = await getListing(decodeURIComponent(id));
+
+  if (!listing) {
+    // A 404 must never be indexed, and without this it would inherit the root
+    // title and look like a real page to a crawler.
+    return { title: "Not found", robots: { index: false, follow: false } };
+  }
+
+  const name = billingName(listing.title);
+  const host = displayHost(listing.url);
+  const canonical = `/product/${encodeURIComponent(listing.id)}`;
+
+  const title =
+    listing.rank === null ? `${name} — archived` : `${name} — rank #${listing.rank}`;
+
+  const description =
+    listing.rank === null
+      ? `${name} (${host}) is in the ${SITE_NAME} archive with ${listing.clickCount.toLocaleString()} clicks. Any spot on the board is free to claim.`
+      : `${name} (${host}) holds rank #${listing.rank} of 100 on ${SITE_NAME}, with ${listing.clickCount.toLocaleString()} clicks. Spots are free and contestable every 24 hours.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: canonical,
+      siteName: SITE_NAME,
+    },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 /**
  * The shell prerenders; the listing streams. `params` is request data, so
@@ -37,8 +92,31 @@ async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
 
   const isLive = listing.rank !== null;
 
+  // BreadcrumbList rather than Product: Product schema expects an offer, a
+  // price or a review, and asserting a shape the page cannot back up is
+  // structured-data spam. A breadcrumb is true here and is one of the few
+  // types that still earns a visible treatment in results.
+  const breadcrumbs = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Board", item: `${SITE_URL}/` },
+      ...(isLive
+        ? []
+        : [{ "@type": "ListItem", position: 2, name: "Archive", item: `${SITE_URL}/archive` }]),
+      {
+        "@type": "ListItem",
+        position: isLive ? 2 : 3,
+        name: billingName(listing.title),
+        item: `${SITE_URL}/product/${encodeURIComponent(listing.id)}`,
+      },
+    ],
+  };
+
   return (
     <>
+      <JsonLd data={breadcrumbs} />
+
       <div className="flex items-start gap-4">
         <ListingAvatar listing={listing} size="lg" />
         <div className="min-w-0 flex-1">

@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import { getBoard } from "@/lib/data/listings";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/domain/site";
+import { billingName } from "@/lib/utils/billing-name";
+import { JsonLd } from "@/lib/seo/json-ld";
 import { BoardRows } from "@/components/board/board-rows";
 import { ClaimButton } from "@/components/board/claim-button";
 import { TopBilling } from "@/components/board/top-billing";
@@ -43,13 +46,53 @@ export default async function BoardPage() {
       ? `Claim spot #${board.bestOpenSlot}`
       : `Join the board — spot #${board.bestOpenSlot}`;
 
+  // No SearchAction: that requires a results page a crawler can hit, and search
+  // here is a dialog with no URL of its own. Declaring one would be a claim the
+  // site cannot honour.
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        name: SITE_NAME,
+        url: `${SITE_URL}/`,
+        description: SITE_DESCRIPTION,
+      },
+      {
+        "@type": "ItemList",
+        name: `The ${SITE_NAME} board`,
+        description: "Live standings, best position first.",
+        numberOfItems: board.entries.length,
+        itemListOrder: "https://schema.org/ItemListOrderAscending",
+        itemListElement: board.entries.map((entry) => ({
+          "@type": "ListItem",
+          position: entry.rank,
+          name: billingName(entry.title),
+          url: `${SITE_URL}/product/${encodeURIComponent(entry.id)}`,
+        })),
+      },
+    ],
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-5 sm:px-6">
+      <JsonLd data={structuredData} />
+
+      {/* The poster treatment gives the page no heading of its own — the
+          largest text on it is a third-party brand name that changes daily,
+          which is the wrong thing for both a crawler and a screen reader to
+          receive as the page's title. This states what the page actually is,
+          without touching the visual design. */}
+      <h1 className="sr-only">
+        {SITE_NAME} — {SITE_DESCRIPTION}
+      </h1>
+
       {board.liveCount === 0 ? (
         <section className="flex flex-col items-center gap-4 py-20 text-center">
-          <h1 className="text-3xl font-black uppercase tracking-tight sm:text-5xl">
+          <p className="text-3xl font-black uppercase tracking-tight sm:text-5xl">
             The board is empty
-          </h1>
+          </p>
           <p className="max-w-md text-sm text-muted-foreground">
             Nobody has claimed a spot yet. Take #1 and hold it for 24 hours.
           </p>
