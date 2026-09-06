@@ -1,10 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useState, type FormEvent } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { submitClaim } from "@/lib/api-client/listings";
-import { HttpError } from "@/lib/network/http-client";
+import { claimSlot } from "@/lib/actions/claim";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +36,6 @@ export function ClaimButton({
   size?: "xs" | "sm" | "default" | "lg";
   className?: string;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
   const [token, setToken] = useState("");
@@ -56,18 +53,28 @@ export function ClaimButton({
     setError(null);
 
     try {
-      const result = await submitClaim({
+      // The action reports failures as values — a protected slot or a moved
+      // board is an answer, not an exception. Only a genuine transport or
+      // server fault lands in catch.
+      const result = await claimSlot({
         target,
         slot,
         expectedListingId,
         turnstileToken: token,
       });
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
       setDone({ rank: result.rank });
       setRecoveryCode(result.recoveryCode ?? null);
       setTarget("");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof HttpError ? err.message : "Something went wrong. Try again.");
+      // No router.refresh(): the action's response carries the re-rendered
+      // board, so the list behind the dialog is already up to date.
+    } catch {
+      setError("Something went wrong. Try again.");
     } finally {
       setBusy(false);
     }
