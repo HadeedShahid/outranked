@@ -1,5 +1,6 @@
 import { cn } from "cn";
 import type { Listing } from "@/lib/types/board";
+import { ListingMark } from "./listing-mark";
 
 const SIZES = {
   sm: "h-9 w-9 text-xs",
@@ -15,7 +16,7 @@ const PX = { sm: 36, md: 48, lg: 80 } as const;
  * Deliberately a plain <img> rather than next/image. Image sources here come
  * from whatever domain a user submits, so next/image would need its hostname
  * allowlist wildcarded — which turns the optimizer into an open proxy anyone
- * can drive at our expense. At 36–80px there is nothing worth optimizing.
+ * can drive at our expense. At 36–88px there is nothing worth optimizing.
  *
  * width/height are set to reserve space and avoid layout shift, and the
  * referrer is withheld so third-party hosts don't learn which of our pages
@@ -34,32 +35,24 @@ export function ListingAvatar({
   /** Overrides the preset box; `size` still supplies the intrinsic dimensions. */
   className?: string;
 }) {
-  const px = PX[size];
+  const box = cn(
+    SIZES[size],
+    "shrink-0 rounded-[4px] border border-border bg-border",
+    className,
+  );
+  const letter = listing.title.charAt(0).toUpperCase();
 
   if (listing.imageUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- see note above
-      <img
+      <ListingMark
         src={listing.imageUrl}
-        alt=""
-        width={px}
-        height={px}
-        loading={eager ? "eager" : "lazy"}
-        fetchPriority={eager ? "high" : undefined}
-        decoding="async"
-        referrerPolicy="no-referrer"
-        className={cn(SIZES[size], "shrink-0 rounded-[4px] border border-border bg-border object-cover", className)}
+        px={PX[size]}
+        eager={eager}
+        letter={letter}
+        className={box}
       />
     );
   }
 
-  return (
-    <div className={cn(
-        SIZES[size],
-        "flex shrink-0 items-center justify-center rounded-[4px] border border-border bg-border font-bold",
-        className,
-      )}>
-      {listing.title.charAt(0).toUpperCase()}
-    </div>
-  );
+  return <div className={`${box} flex items-center justify-center font-bold`}>{letter}</div>;
 }

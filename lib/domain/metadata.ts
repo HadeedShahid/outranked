@@ -88,6 +88,38 @@ function metaContent(html: string, patterns: RegExp[]): string | undefined {
  * all of it in its metadata. Every failure path falls back to the domain name,
  * so a slow or hostile site can never block a claim from going through.
  */
+/**
+ * The largest icon a page declares.
+ *
+ * Sites routinely offer the same mark at many sizes — PostHog declares eight,
+ * from 48px to 512px — and taking the first match lands on the smallest. The
+ * top slot renders this at 88px, where a 16 or 48px source is visibly soft, so
+ * the declared `sizes` decides. apple-touch-icon only breaks ties: those are
+ * drawn as full-bleed app marks, where a plain favicon is often padded.
+ *
+ * `mask-icon` is excluded — Safari's monochrome silhouette, not a logo.
+ */
+function bestIconHref(html: string): string | undefined {
+  let best: { href: string; score: number } | undefined;
+
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+    const rel = /rel=["']([^"']+)["']/i.exec(tag)?.[1]?.toLowerCase() ?? "";
+    if (!/(^|\s)(shortcut\s+)?icon(\s|$)/.test(rel) && !rel.includes("apple-touch-icon")) continue;
+    if (rel.includes("mask-icon")) continue;
+
+    const href = /href=["']([^"']+)["']/i.exec(tag)?.[1];
+    if (!href) continue;
+
+    const declared = /sizes=["']([^"']+)["']/i.exec(tag)?.[1] ?? "";
+    const px = Number(/(\d+)x\d+/.exec(declared)?.[1] ?? 0);
+    const score = px * 10 + (rel.includes("apple-touch-icon") ? 1 : 0);
+
+    if (!best || score > best.score) best = { href, score };
+  }
+
+  return best?.href;
+}
+
 export async function fetchListingMetadata(url: string): Promise<ListingMetadata> {
   const fallback: ListingMetadata = { title: displayHost(url), description: "" };
 
@@ -158,18 +190,13 @@ export async function fetchListingMetadata(url: string): Promise<ListingMetadata
         /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i,
       ]) ?? "";
 
-    // This image is only ever shown as a square 36-80px mark, so a square icon
+    // This image is only ever shown as a square 36-88px mark, so a square icon
     // beats og:image every time: a social card is 1200x630, and cropping one to
     // a square yields a meaningless slice of a screenshot rather than a logo.
     // og:image stays as the last resort, and /favicon.ico as the one after that
     // — plenty of sites serve it without ever declaring a <link>.
     const rawImage =
-      metaContent(html, [
-        /<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]+href=["']([^"']+)["']/i,
-        /<link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*apple-touch-icon[^"']*["']/i,
-        /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i,
-        /<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:shortcut )?icon["']/i,
-      ]) ??
+      bestIconHref(html) ??
       metaContent(html, [
         /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
         /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,

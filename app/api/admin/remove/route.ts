@@ -48,8 +48,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidateTag(BOARD_TAG, "seconds");
-  revalidateTag(ARCHIVE_TAG, "seconds");
+  // See the note in /api/claim: a named profile keeps serving the pre-removal
+  // board to the very caller that just changed it.
+  revalidateTag(BOARD_TAG, { expire: 0 });
+  revalidateTag(ARCHIVE_TAG, { expire: 0 });
 
   return NextResponse.json({ ok: true, removed: data === true });
 }

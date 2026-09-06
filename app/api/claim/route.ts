@@ -54,10 +54,18 @@ export async function POST(request: Request) {
   }
 
   // A claim reorders the board and may push a listing into the archive.
-  // revalidateTag rather than updateTag: updateTag only works in Server
-  // Actions, not Route Handlers.
-  revalidateTag(BOARD_TAG, "seconds");
-  revalidateTag(ARCHIVE_TAG, "seconds");
+  //
+  // revalidateTag rather than updateTag: updateTag expires immediately and is
+  // what this wants, but it only works in Server Actions, not Route Handlers.
+  //
+  // { expire: 0 } rather than a named profile: the second argument is how long
+  // stale content may still be served, not how soon it refreshes. Under a
+  // profile the claimant's own router.refresh() races the background
+  // revalidation and is handed the pre-claim board, so the listing they just
+  // created is missing until they reload by hand. Zero makes that request a
+  // blocking cache miss instead.
+  revalidateTag(BOARD_TAG, { expire: 0 });
+  revalidateTag(ARCHIVE_TAG, { expire: 0 });
 
   const response = NextResponse.json(result);
 
