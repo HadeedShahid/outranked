@@ -5,6 +5,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { FeatureBanner } from "@/components/ads/feature-banner";
 import { SideRail } from "@/components/ads/side-rail";
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -40,6 +42,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <SideRail />
           </div>
           <SiteFooter />
+          <SpeedInsights/>
+          <Analytics/>
         </ThemeProvider>
       </body>
     </html>
