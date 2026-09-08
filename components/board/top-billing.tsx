@@ -81,7 +81,7 @@ export function TopBilling({ entries }: { entries: BoardEntry[] }) {
       {(second || third) && (
         <>
           <Separator className="mx-auto mt-5 max-w-3xl sm:mt-6" />
-          <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 pt-5 sm:grid-cols-2 sm:gap-10 sm:pt-6">
+          <div className="mx-auto grid max-w-3xl grid-cols-2 items-start gap-3 pt-5 sm:gap-10 sm:pt-6">
             {second && <BillingSupport entry={second} />}
             {third && <BillingSupport entry={third} />}
           </div>
@@ -92,32 +92,51 @@ export function TopBilling({ entries }: { entries: BoardEntry[] }) {
 }
 
 /**
- * Runner-up billing. Laid out horizontally — mark, then ordinal and name on one
- * line, then a single meta line — because stacking five centred elements cost
- * roughly twice the height for the same information.
+ * Runner-up billing.
+ *
+ * Two shapes from one tree, not two copies of the markup:
+ *
+ * - Under `sm` it is a podium — ordinal above mark above name, centred, two
+ *   up. A column that narrow cannot hold a horizontal row without the name
+ *   collapsing to a few characters.
+ * - From `sm` up it goes back to a row — ordinal, mark, then name over a
+ *   single meta line — because at that width the row reads better and takes
+ *   less height.
+ *
+ * The direction switches on the two flex containers; nothing is duplicated and
+ * hidden, so there is only ever one claim button per slot in the document.
  */
 function BillingSupport({ entry }: { entry: BoardEntry }) {
   return (
-    <div className="flex items-center gap-2.5">
-      {/* Outside the mark, not between it and the name: sharing a baseline with
-          the name pinned it to the top of the block and left it looking loose. */}
+    <div className="flex flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-3 sm:text-left">
       <span className="font-mono text-[11px] font-bold text-[var(--brand-text)]">
         #{entry.rank}
       </span>
 
       <ListingAvatar listing={entry} size="md" eager />
 
-      <div className="min-w-0 text-left">
-        <Link
-          href={`/product/${entry.id}`}
-          className="block truncate text-[clamp(1rem,2.8vw,1.5rem)] font-bold uppercase leading-tight tracking-[-0.02em] transition-opacity hover:opacity-70"
-        >
-          {billingName(entry.title)}
-        </Link>
+      <div className="flex min-w-0 flex-col items-center gap-1.5 sm:items-start sm:gap-0">
+        {/* The fixed box only exists on the podium, where a wrapped name in one
+            column would otherwise push its clicks and countdown a line below
+            the other column's. */}
+        <div className="flex min-h-[2.4em] w-full items-center justify-center sm:block sm:min-h-0">
+          <Link
+            href={`/product/${entry.id}`}
+            className="line-clamp-2 break-words text-sm font-bold uppercase leading-[1.15] tracking-[-0.01em] transition-opacity hover:opacity-70 sm:line-clamp-none sm:truncate sm:text-[clamp(1rem,2.8vw,1.5rem)] sm:leading-tight"
+          >
+            {billingName(entry.title)}
+          </Link>
+        </div>
 
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="truncate">{entry.clickCount.toLocaleString()} clicks</span>
-          <span aria-hidden>·</span>
+        <div className="flex flex-col items-center gap-0.5 text-[10px] text-muted-foreground sm:mt-0.5 sm:flex-row sm:items-center sm:gap-1.5 sm:text-xs">
+          <span className="font-mono sm:font-sans">
+            {entry.clickCount.toLocaleString()} clicks
+          </span>
+
+          <span aria-hidden className="hidden sm:inline">
+            ·
+          </span>
+
           {entry.claimable ? (
             <ClaimButton
               slot={entry.rank}
