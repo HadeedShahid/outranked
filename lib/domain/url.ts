@@ -1,4 +1,5 @@
 import { BLOCKED_HOSTS, PATH_KEYED_HOSTS, SHORTENER_HOSTS } from "./rules";
+import { SITE_NAME } from "./site";
 
 export type NormalizeResult =
   | { ok: true; id: string; url: string; label: string }
@@ -64,5 +65,37 @@ export function displayHost(url: string): string {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
     return url;
+  }
+}
+
+/**
+ * Tags an outbound listing link so the destination's analytics can attribute
+ * the visit.
+ *
+ * Applied when the link is rendered, never stored. The stored URL is the
+ * listing's identity — `normalizeTarget` deliberately strips query strings so
+ * two submissions of the same product collapse onto one listing, and writing
+ * tracking parameters back into it would undo that.
+ *
+ * `searchParams.set` rather than string concatenation: it preserves any
+ * parameters the URL already carries and replaces ours if they are somehow
+ * present twice. Source and medium are overwritten rather than merged, because
+ * the click did come from here regardless of what the submitted URL claimed.
+ *
+ * No `utm_campaign`: there is no campaign, and inventing one only adds a
+ * meaningless dimension to someone else's reports.
+ */
+export function withUtm(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    // Anything that is not a web link — a mailto, a custom scheme — is left
+    // exactly as submitted.
+    if (url.protocol !== "https:" && url.protocol !== "http:") return rawUrl;
+
+    url.searchParams.set("utm_source", SITE_NAME);
+    url.searchParams.set("utm_medium", "referral");
+    return url.toString();
+  } catch {
+    return rawUrl;
   }
 }

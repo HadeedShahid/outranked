@@ -2,6 +2,7 @@
 
 import type { AnchorHTMLAttributes } from "react";
 import { trackClick } from "@/lib/api-client/listings";
+import { withUtm } from "@/lib/domain/url";
 
 interface ListingLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   listingId: string;
@@ -24,10 +25,13 @@ interface ListingLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
  * - `noopener noreferrer` is the security half: it denies the opened page a
  *   handle on this window and withholds the referrer.
  */
-export function ListingLink({ listingId, ...props }: ListingLinkProps) {
+export function ListingLink({ listingId, href, ...props }: ListingLinkProps) {
   return (
     <a
       {...props}
+      // Tagged here rather than at each call site, so a new place to show a
+      // listing cannot forget it.
+      href={href ? withUtm(href) : undefined}
       target="_blank"
       rel="nofollow ugc noopener noreferrer"
       onClick={() => {
